@@ -444,12 +444,10 @@ def _boolean(value):
     raise ValueError("Unrecognised boolean-like value %r" % value)
 
 def add_class(tag, value):
-    print 'appending class',value,'to tag',tag.name,'with attrs',tag.attrs
     classes = tag.attrs.get('class')
     if classes:
         classes = classes.split(' ')
     else:
         classes = []
-    print 'classes',classes
     classes.append(value)
     tag.attrs['class'] = ' '.join(classes)
