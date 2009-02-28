@@ -77,10 +77,24 @@ class Node(object):
     def add(self, child):
         self.children.append(child)
 
-    def add_node(self, dottedpath, label, id, **kw):
+    def add_from_node_def(self, dottedpath, label, id, **kw):
         parent_dottedpath = '.'.join(dottedpath.split('.')[:-1])
         parent_node = self.descendent_by_dottedpath(parent_dottedpath)
         parent_node.add( Node(dottedpath, label, id, **kw) )
+
+
+def create_sitemap(node_defs):
+    """
+    creates a node tree from a list of args e.g. the following yaml representation
+        - [root, Home, 1, {}]
+        - [root.about, About, 2, {}]
+        - [root.gallery, Gallery, 3, {}]
+    """
+    root_node_def = node_defs.pop(0)
+    sitemap = Node( *root_node_def[:-1], **root_node_def[-1])
+    for node_def in node_defs:
+        sitemap.add_from_node_def( *node_def[:-1], **node_def[-1])
+    return sitemap
 
         
 
@@ -256,7 +270,7 @@ class Navigation(object):
             tag[t]
             
             if request_path == nodepath:
-                t = t(class_="selected")            
+                add_class(t, 'selected')
 
         def _add_child_menus(tag, node, urlpath):
 
@@ -278,9 +292,9 @@ class Navigation(object):
 
             # Mark selected item
             if request_path[:nodedepth] == nodepath[:nodedepth]:
-                t = t(class_="selectedpath")
+                add_class(t, 'selectedpath')
             if request_path == nodepath:
-                t = t(class_="selected")
+                add_class(t, 'selected')
 
             # only show up to a set depth
             if self.maxdepth is not None and nodedepth > self.maxdepth:
@@ -319,18 +333,16 @@ class Navigation(object):
 
         def _menu_built(tag):
 
-            def appendClassAttribute(tag, attribute, value):
-                tag.attrs[attribute] = "%s %s"%(tag.attrs.get('class', ''),value)
 
             
             try:
-                appendClassAttribute(tag.children[0], 'class', 'first-child')
-                appendClassAttribute(tag.children[-1], 'class', 'last-child')
+                add_class(tag.children[0], 'first-child')
+                add_class(tag.children[-1], 'last-child')
             except IndexError:
                 pass
             
             for n,child in enumerate(tag.children):
-                appendClassAttribute(tag.children[n], 'class', 'item-%s'%(n+1))
+                add_class(tag.children[n], 'item-%s'%(n+1))
             return tag
 
 
@@ -411,3 +423,8 @@ def _boolean(value):
 
     raise ValueError("Unrecognised boolean-like value %r" % value)
 
+def add_class(tag, value):
+    print 'appending class',value,'to tag',tag.name,'with attrs',tag.attrs
+    classes = tag.attrs.get('class', '').split(' ')
+    classes.append(value)
+    tag.attrs['class'] = ' '.join(classes)
