@@ -1,13 +1,12 @@
 from restish import url
 from breve.tags.html import tags as T
+from breve.flatten import flatten
 
-
-class SiteMapItem(object):
+class NavigationItem(object):
     """I represent a site map item aka a menu item.
     """
 
-    def __init__(self, manager, id, label, path, level, app, item_id, children=None):
-        self.manager = manager
+    def __init__(self, id, label, path, level=None, app=None, item_id=None, children=None):
         self.id = id
         self.path = path
         self.level = level
@@ -73,8 +72,11 @@ class SiteMapItem(object):
         else:
             return None
 
+    def add_child(self, child):
+        self.children.append(child)
 
-class NestedListNavigationFragment(objct):
+
+class Navigation(object):
 
     def __init__(self, type=None, maxdepth=None, showroot=False, openall=False,
             openallbelow=0, startdepth=0,force_url=None):
@@ -196,7 +198,8 @@ class NestedListNavigationFragment(objct):
     
     def render_navigation(self, sitemap, request):
         self.initialise_args(sitemap, request)
-        return self.build_menu(sitemap, request)
+        n = self.build_menu(sitemap, request)
+        return flatten(n)
 
     def get_current_path_segments(self, request):
         path = ['root'] + request.url.path_segments
@@ -233,7 +236,7 @@ class NestedListNavigationFragment(objct):
 
 
         def url_for_node(node):
-            u = url.root
+            u = url.URL('/')
             for segment in node.path.split('.')[1:]:
                 u = u.child(segment)
             return u
@@ -333,7 +336,7 @@ class NestedListNavigationFragment(objct):
         node = sitemap
 
         # Adjust the root node for the start depth.
-        urlpath = list(url.URL(context.IRequest(ctx).path).pathList())
+        urlpath = request.url.path_segments
         if urlpath == ['']:
             urlpath = []
 
@@ -356,14 +359,6 @@ class NestedListNavigationFragment(objct):
         return menu_built(tag)
     
 
-
-def labelForMenu(ctx, item, node):
-    """
-    Return the best label to use in the navigation. This is either the label
-    assigned to the sitemap item or a title obtained from the content item.
-    """
-    if node.label:
-        return node.label
 
 
 
