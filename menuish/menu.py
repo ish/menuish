@@ -172,6 +172,8 @@ class Navigation(object):
             self.force_url_path = ['root'] + force_url.split('/')
         else:
             self.force_url_path = None
+        if item_class is None:
+            item_class = []
         self.item_class = item_class
         if item_id is None:
             item_id = 'name'
