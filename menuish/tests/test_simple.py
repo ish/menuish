@@ -21,9 +21,9 @@ class Test(TestCase):
         sitemap = Node('root','Home', 'x1')
         sitemap.add( Node('root.gallery','Gallery','x2'))
 
-        nav = Navigation(showroot=True)
+        nav = Navigation(showroot=True, item_class=['firstlast','number'], item_id=None)
         html = nav.render_navigation(sitemap, self.request)
-        assert html == '<ul><li class=" first-child item-1"><a href="/">Home</a></li><li class=" selectedpath selected last-child item-2"><a href="/gallery">Gallery</a></li></ul>'
+        assert html == '<ul><li id="root" class="first-child item-1"><a href="/">Home</a></li><li class="selected last-child item-2" id="gallery"><a href="/gallery">Gallery</a></li></ul>'
 
     def test_yaml(self):
         sitemap_yaml = """
@@ -32,9 +32,8 @@ class Test(TestCase):
         - [root.gallery, Gallery, 3, {}]
         """
         sitemap = create_sitemap(yaml.load(sitemap_yaml))
-        nav = Navigation(showroot=True)
-        html = Navigation(showroot=True).render_navigation(sitemap, self.request)
-        assert html == '<ul><li class=" first-child item-1"><a href="/">Home</a></li><li class=" item-2"><a href="/about">About</a></li><li class=" selectedpath selected last-child item-3"><a href="/gallery">Gallery</a></li></ul>'
+        html = Navigation(showroot=True, item_class=['firstlast','number'], item_id=None).render_navigation(sitemap, self.request)
+        assert html == '<ul><li id="root" class="first-child item-1"><a href="/">Home</a></li><li id="about" class="item-2"><a href="/about">About</a></li><li class="selected last-child item-3" id="gallery"><a href="/gallery">Gallery</a></li></ul>'
 
 
 

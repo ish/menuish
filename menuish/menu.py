@@ -102,7 +102,7 @@ def create_sitemap(node_defs):
 class Navigation(object):
 
     def __init__(self, type=None, maxdepth=None, showroot=False, openall=False,
-            openallbelow=0, startdepth=0,force_url=None):
+            openallbelow=0, startdepth=0,force_url=None,item_class=None,item_id=None):
         """
 
         Parameters
@@ -135,6 +135,12 @@ class Navigation(object):
         force_url
             render as if you are here
 
+        item_class
+            a list of what class to add. valid values are 'number' and 'firstlast'.
+ 
+        item_id
+            the node attr to use as the id. Defaults to 'name' (the only value at the moment)
+
 
 
         URL Depth Specification
@@ -166,6 +172,10 @@ class Navigation(object):
             self.force_url_path = ['root'] + force_url.split('/')
         else:
             self.force_url_path = None
+        self.item_class = item_class
+        if item_id is None:
+            item_id = 'name'
+        self.item_id = item_id
 
     def render_navigation(self, sitemap, request):
         self.initialise_args(sitemap, request)
@@ -272,6 +282,9 @@ class Navigation(object):
             if request_path == nodepath:
                 add_class(t, 'selected')
 
+            if self.item_id == 'name':
+                t.attrs['id'] = node.name
+
         def _add_child_menus(tag, node, urlpath):
 
             nodepath = node.path.split('.')
@@ -291,10 +304,13 @@ class Navigation(object):
             tag[t]
 
             # Mark selected item
-            if request_path[:nodedepth] == nodepath[:nodedepth]:
-                add_class(t, 'selectedpath')
             if request_path == nodepath:
                 add_class(t, 'selected')
+            elif request_path[:nodedepth] == nodepath[:nodedepth]:
+                add_class(t, 'selectedpath')
+
+            if self.item_id == 'name':
+                t.attrs['id'] = node.name
 
             # only show up to a set depth
             if self.maxdepth is not None and nodedepth > self.maxdepth:
@@ -335,14 +351,16 @@ class Navigation(object):
 
 
             
-            try:
-                add_class(tag.children[0], 'first-child')
-                add_class(tag.children[-1], 'last-child')
-            except IndexError:
-                pass
+            if 'firstlast' in self.item_class:
+                try:
+                    add_class(tag.children[0], 'first-child')
+                    add_class(tag.children[-1], 'last-child')
+                except IndexError:
+                    pass
             
-            for n,child in enumerate(tag.children):
-                add_class(tag.children[n], 'item-%s'%(n+1))
+            if 'number' in self.item_class:
+                for n,child in enumerate(tag.children):
+                    add_class(tag.children[n], 'item-%s'%(n+1))
             return tag
 
 
@@ -425,6 +443,11 @@ def _boolean(value):
 
 def add_class(tag, value):
     print 'appending class',value,'to tag',tag.name,'with attrs',tag.attrs
-    classes = tag.attrs.get('class', '').split(' ')
+    classes = tag.attrs.get('class')
+    if classes:
+        classes = classes.split(' ')
+    else:
+        classes = []
+    print 'classes',classes
     classes.append(value)
     tag.attrs['class'] = ' '.join(classes)
