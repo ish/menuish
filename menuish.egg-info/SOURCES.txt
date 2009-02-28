@@ -1,0 +1,9 @@
+setup.cfg
+setup.py
+menuish/__init__.py
+menuish.egg-info/PKG-INFO
+menuish.egg-info/SOURCES.txt
+menuish.egg-info/dependency_links.txt
+menuish.egg-info/entry_points.txt
+menuish.egg-info/top_level.txt
+menuish.egg-info/zip-safe

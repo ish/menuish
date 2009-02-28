@@ -2,22 +2,23 @@ from restish import url
 from breve.tags.html import tags as T
 from breve.flatten import flatten
 
-class NavigationItem(object):
-    """I represent a site map item aka a menu item.
+class Node(object):
+    """
+    A Navigation Node
     """
 
-    def __init__(self, id, label, path, level=None, app=None, item_id=None, children=None):
+    def __init__(self, dottedpath, label, id, group=None, item_id=None, children=None, namespace=None):
         self.id = id
-        self.path = path
-        self.level = level
-        self.app = app
+        self.path = dottedpath
+        self.group = group
         self.item_id = item_id
         self.label = label
-        self._item = None
+        self.item = None
         if children is not None:
             self.children = children
         else:
             self.children = []
+        self.namespace = namespace
 
     def name():
         def get(self):
@@ -27,40 +28,41 @@ class NavigationItem(object):
         return property(get, set)
     name = name()
 
-    def find_child_by_id(self, childId):
-        """Search all the children of this node for a child with the specified
-        id.
+    def descendent_by_id(self, childId):
+        """
+        Search all the children of this node for a child with the specified id.
         """
         for child in self.children:
             if child.id == childId:
                 return child
-            child = child.find_child_by_id(childId)
+            child = child.descendent_by_id(childId)
             if child is not None:
                 return child
 
-    def find_child_by_name(self, name):
-        """Find an immediate child with the specified name.
+    def child_by_name(self, name):
+        """
+        Find an immediate child with the specified name.
         """
         for child in self.children:
             if child.name == name:
                 return child
 
-    def getItem(self):
-        return self._item
-
-    def hasItem(self):
-        return self._item is not None
-
-    def setItem(self, item):
-        self._item = item
-
-
-    def get_node_from_url(self,child_url):
+    def descendent_by_abspath(self,child_url):
         if child_url.startswith('/'):
             child_url = child_url[1:]
-        segments = child_url.split('/')
+        segments = ['root'] + child_url.split('/')
+        return self.descendent_by_segments(segments)
+
+    def descendent_by_dottedpath(self, dottedpath):
+        segments = dottedpath.split('.')
+        return self.descendent_by_segments(segments)
+
+
+    def descendent_by_segments(self, segments):
+        if len(segments) == 1:
+            return self
         node = self
-        for segment in segments:
+        for segment in segments[1:]:
             for n in node.children:
                 if n.path.split('.')[-1] == segment:
                     node = n
@@ -72,8 +74,15 @@ class NavigationItem(object):
         else:
             return None
 
-    def add_child(self, child):
+    def add(self, child):
         self.children.append(child)
+
+    def add_node(self, dottedpath, label, id, **kw):
+        parent_dottedpath = '.'.join(dottedpath.split('.')[:-1])
+        parent_node = self.descendent_by_dottedpath(parent_dottedpath)
+        parent_node.add( Node(dottedpath, label, id, **kw) )
+
+        
 
 
 class Navigation(object):
@@ -119,7 +128,7 @@ class Navigation(object):
 
         The startdepth and maxdepth can be specified in a number of ways,
         either absolute to the root URL or relative from a symbolic location or
-        a named navigation level.
+        a named navigation group.
 
             <int>   
                 Absolute depth from the root of the site.
@@ -131,7 +140,7 @@ class Navigation(object):
                 Relative to the startdepth. (Don't use for startdepth itself!)
 
             <navigation>+<int>
-                Relative to the deepest item in the given navigation level.
+                Relative to the deepest item in the given navigation group.
         """
         self.navigation_type = type
         self.startdepth = startdepth
@@ -144,6 +153,10 @@ class Navigation(object):
         else:
             self.force_url_path = None
 
+    def render_navigation(self, sitemap, request):
+        self.initialise_args(sitemap, request)
+        n = self.build_menu(sitemap, request)
+        return flatten(n)
 
     def initialise_args(self, sitemap, request):
         """
@@ -157,14 +170,14 @@ class Navigation(object):
         if self.navigation_type is not None:
             self.navigation_type = int(self.navigation_type)
         if self.maxdepth is not None:
-            self.maxdepth = self.resolve_depth_arg(self.maxdepth, sitemap, request)
-        self.startdepth = self.resolve_depth_arg(self.startdepth, sitemap, request)
-        self.showroot = resolve_boolean(self.showroot)
-        self.openall = resolve_boolean(self.openall)
+            self.maxdepth = self.calculate_depth(self.maxdepth, sitemap, request)
+        self.startdepth = self.calculate_depth(self.startdepth, sitemap, request)
+        self.showroot = _boolean(self.showroot)
+        self.openall = _boolean(self.openall)
         self.openallbelow = int(self.openallbelow)
 
 
-    def resolve_depth_arg(self, depth_spec, sitemap, request):
+    def calculate_depth(self, depth_spec, sitemap, request):
         """
         Resolve a depth arg.
         """
@@ -182,51 +195,42 @@ class Navigation(object):
 
         if relative_to == 'here':
             # Relative to the current url
-            relative_depth = len(self.get_current_path(sitemap, request)) - 1
+            relative_depth = len(self.current_path_segments(request)) - 1
 
         elif relative_to == 'startdepth':
             # Relative to the start depth
-            relative_depth = self.resolve_depth_arg(self.startdepth, sitemap, request)
+            relative_depth = self.calculate_depth(self.startdepth, sitemap, request)
 
         else:
-            # Relative to the navigation level
-            navigation_level = int(relative_to)
-            relative_depth = len(self.get_current_path(sitemap, request, navigation_level)) - 1
+            # Relative to the navigation group
+            navigation_group = int(relative_to)
+            relative_depth = len(self.current_path_segments_for_(sitemap, request, navigation_group)) - 1
 
         return relative_depth + relative_offset
         
-    
-    def render_navigation(self, sitemap, request):
-        self.initialise_args(sitemap, request)
-        n = self.build_menu(sitemap, request)
-        return flatten(n)
-
-    def get_current_path_segments(self, request):
+    def current_path_segments(self, request):
         path = ['root'] + request.url.path_segments
         return path
 
-
-    def get_current_path(self, sitemap, request, navigation_level=None):
-        path = self.get_current_path_segments(request)
+    def current_path_segments_for_(self, sitemap, request, navigation_group=None):
+        path = self.current_path_segments(request)
         # Rebuild path to reference the deepest path within the given
-        # navigation level (if any).
-        if navigation_level is not None:
-            path, rest = path[:1], path[1:]
-            node = sitemap
-            for segment in rest:
-                node = node.find_child_by_name(segment)
-                if node.level == navigation_level:
-                    path.append(segment)
-                else:
-                    break
+        # navigation group (if any).
+        path, rest = path[:1], path[1:]
+        node = sitemap
+        for segment in rest:
+            node = node.child_by_name(segment)
+            if node.group == navigation_group:
+                path.append(segment)
+            else:
+                break
 
         return path
-
 
     def build_menu(self, sitemap, request):
 
         # Highlighting of navigation is driven by the request.
-        request_path = self.get_current_path_segments(request)
+        request_path = self.current_path_segments(request)
         # Filter out empty segments
         request_path = [ r for r in request_path if r ]
         if self.force_url_path is not None:
@@ -234,28 +238,27 @@ class Navigation(object):
         else:
             force_url_path = request_path
 
+        def _url_for_node(node):
 
-        def url_for_node(node):
             u = url.URL('/')
             for segment in node.path.split('.')[1:]:
                 u = u.child(segment)
             return u
 
-        def add_root_menu(tag):
+        def _add_root_menu(tag):
 
             nodepath = node.path.split('.')
             nodedepth = len(nodepath)
 
             label = node.label
 
-            t = T.li()[T.a(href=url_for_node(node))[label]]
+            t = T.li()[T.a(href=_url_for_node(node))[label]]
             tag[t]
             
             if request_path == nodepath:
                 t = t(class_="selected")            
 
-
-        def add_child_menus(tag, node, urlpath):
+        def _add_child_menus(tag, node, urlpath):
 
             nodepath = node.path.split('.')
             nodedepth = len(nodepath)
@@ -270,7 +273,7 @@ class Navigation(object):
                     if n+1>=nodedepth or segment != nodepath[n+1]:
                         return
 
-            t = T.li()[T.a(href=url_for_node(node))[label]]
+            t = T.li()[T.a(href=_url_for_node(node))[label]]
             tag[t]
 
             # Mark selected item
@@ -288,10 +291,9 @@ class Navigation(object):
 
                 s = T.ul()
                 t[s]
-                add_children(s, node, urlpath,is_root=False)
+                _add_children(s, node, urlpath,is_root=False)
 
-
-        def add_children(tag, node, urlpath, is_root=True):
+        def _add_children(tag, node, urlpath, is_root=True):
             """ The root node is the top level segment (e.g. for an absolute url
                 /a/b/c, root node is 'a'
                 node is the sitemap root node (with path 'root')
@@ -300,7 +302,7 @@ class Navigation(object):
             # if this is the root node of our tree, and we have 'showroot' set
             # then add this as a top level list item
             if node is not None and is_root is True and self.showroot is True:
-                add_root_menu(tag)
+                _add_root_menu(tag)
 
             if node is None or node.children is None:
                 return tag
@@ -308,14 +310,14 @@ class Navigation(object):
 
             # for each child of the node, (i.e. for each top level menu item) 
             for child in node.children:
-                # as long as a level is defined, otherwise continue
-                if self.navigation_type is not None and child.level != self.navigation_type:
+                # as long as a group is defined, otherwise continue
+                if self.navigation_type is not None and child.group != self.navigation_type:
                     continue
-                add_child_menus(tag, child, urlpath)
+                _add_child_menus(tag, child, urlpath)
 
             return tag
 
-        def menu_built(tag):
+        def _menu_built(tag):
 
             def appendClassAttribute(tag, attribute, value):
                 tag.attrs[attribute] = "%s %s"%(tag.attrs.get('class', ''),value)
@@ -346,23 +348,19 @@ class Navigation(object):
         else:
             # Traverse the sitemap to find the root node at the given start depth.
             for segment in urlpath[:self.startdepth]:
-                node = node.find_child_by_name(segment)
-
+                node = node.child_by_name(segment)
 
         # We always start with a menu
         tag = T.ul()
-        
 
-        # Take the rootnode and add children given the navigation level as
-        # context (navlevel is primary secondary but coded as integers)
-        tag = add_children(tag, node, urlpath)
-        return menu_built(tag)
-    
+        # Take the rootnode and add children given the navigation group as
+        # context (navgroup is primary secondary but coded as integers)
+        tag = _add_children(tag, node, urlpath)
+        return _menu_built(tag)
 
 
 
-
-def items_to_display(sitemap, current_path, navigation_type):
+def items_to_display(sitemap, current_path, navigation_group):
 
     # root is always displayed
     items = [sitemap]
@@ -376,7 +374,7 @@ def items_to_display(sitemap, current_path, navigation_type):
 
         # Add the children of the node
         for child in node.children:
-            if child.level is not None:
+            if child.group  == navigation_group:
                 items.append(child)
 
         nodepath = node.path.split('.')
@@ -386,7 +384,7 @@ def items_to_display(sitemap, current_path, navigation_type):
             return
 
         child = current_path[nodedepth]
-        visit_children(node.find_child_by_name(child))
+        visit_children(node.child_by_name(child))
 
     visit_children(sitemap)
 
@@ -394,11 +392,10 @@ def items_to_display(sitemap, current_path, navigation_type):
     
 
 
-def resolve_boolean(value):
+def _boolean(value):
     """
     Map a boolean-like value to a Python bool instance.
     """
-
     # Maybe it's an integer value
     try:
         return bool(int(value))
