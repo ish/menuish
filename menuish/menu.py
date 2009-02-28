@@ -285,7 +285,7 @@ class Navigation(object):
                 add_class(t, 'selected')
 
             if self.item_id == 'name':
-                t.attrs['id'] = node.name
+                t.attrs['id'] = 'nav-%s'%node.name
 
         def _add_child_menus(tag, node, urlpath):
 
@@ -312,7 +312,7 @@ class Navigation(object):
                 add_class(t, 'selectedpath')
 
             if self.item_id == 'name':
-                t.attrs['id'] = node.name
+                t.attrs['id'] = 'nav-%s'%node.name
 
             # only show up to a set depth
             if self.maxdepth is not None and nodedepth > self.maxdepth:

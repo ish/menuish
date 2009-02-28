@@ -23,7 +23,7 @@ class Test(TestCase):
 
         nav = Navigation(showroot=True, item_class=['firstlast','number'], item_id=None)
         html = nav.render_navigation(sitemap, self.request)
-        assert html == '<ul><li id="root" class="first-child item-1"><a href="/">Home</a></li><li class="selected last-child item-2" id="gallery"><a href="/gallery">Gallery</a></li></ul>'
+        assert html == '<ul><li id="nav-root" class="first-child item-1"><a href="/">Home</a></li><li class="selected last-child item-2" id="nav-gallery"><a href="/gallery">Gallery</a></li></ul>'
 
     def test_yaml(self):
         sitemap_yaml = """
@@ -33,7 +33,7 @@ class Test(TestCase):
         """
         sitemap = create_sitemap(yaml.load(sitemap_yaml))
         html = Navigation(showroot=True, item_class=['firstlast','number'], item_id=None).render_navigation(sitemap, self.request)
-        assert html == '<ul><li id="root" class="first-child item-1"><a href="/">Home</a></li><li id="about" class="item-2"><a href="/about">About</a></li><li class="selected last-child item-3" id="gallery"><a href="/gallery">Gallery</a></li></ul>'
+        assert html == '<ul><li id="nav-root" class="first-child item-1"><a href="/">Home</a></li><li id="nav-about" class="item-2"><a href="/about">About</a></li><li class="selected last-child item-3" id="nav-gallery"><a href="/gallery">Gallery</a></li></ul>'
 
 
 
