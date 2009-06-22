@@ -102,7 +102,7 @@ def create_sitemap(node_defs):
 class Navigation(object):
 
     def __init__(self, type=None, maxdepth=None, showroot=False, openall=False,
-            openallbelow=0, startdepth=0,force_url=None,item_class=None,item_id=None):
+            openallbelow=0, startdepth=0,force_url=None,item_class=None,item_id=None,urlbase='/',urlfactory=None):
         """
 
         Parameters
@@ -168,6 +168,11 @@ class Navigation(object):
         self.showroot = showroot
         self.openall = openall
         self.openallbelow = openallbelow
+        if urlfactory is None:
+            self.urlfactory = self._urlfactory
+        else:
+            self.urlfactory = urlfactory
+        self.urlbase = urlbase
         if force_url is not None:
             self.force_url_path = ['root'] + force_url.split('/')
         else:
@@ -178,6 +183,12 @@ class Navigation(object):
         if item_id is None:
             item_id = 'name'
         self.item_id = item_id
+
+    def _urlfactory(self,node):
+        u = url.URL(self.urlbase)
+        for segment in node.path.split('.')[1:]:
+            u = u.child(segment)
+        return u
 
     def render_navigation(self, sitemap, request):
         self.initialise_args(sitemap, request)
@@ -264,12 +275,6 @@ class Navigation(object):
         else:
             force_url_path = request_path
 
-        def _url_for_node(node):
-
-            u = url.URL('/')
-            for segment in node.path.split('.')[1:]:
-                u = u.child(segment)
-            return u
 
         def _add_root_menu(tag):
 
@@ -278,7 +283,7 @@ class Navigation(object):
 
             label = node.label
 
-            t = T.li()[T.a(href=_url_for_node(node))[label]]
+            t = T.li()[T.a(href=self.urlfactory(node))[label]]
             tag[t]
             
             if request_path == nodepath:
@@ -302,7 +307,7 @@ class Navigation(object):
                     if n+1>=nodedepth or segment != nodepath[n+1]:
                         return
 
-            t = T.li()[T.a(href=_url_for_node(node))[label]]
+            t = T.li()[T.a(href=self.urlfactory(node))[label]]
             tag[t]
 
             # Mark selected item
