@@ -101,7 +101,7 @@ def create_sitemap(node_defs):
 
 class Navigation(object):
 
-    def __init__(self, type=None, maxdepth=None, showroot=False, openall=False,
+    def __init__(self, type=None, maxdepth=None, showroot=False, openall=False, css_class=None,
             openallbelow=0, startdepth=0,force_url=None,item_class=None,item_id=None,urlbase='/',urlfactory=None):
         """
 
@@ -183,6 +183,7 @@ class Navigation(object):
         if item_id is None:
             item_id = 'name'
         self.item_id = item_id
+        self.css_class = css_class
 
     def _urlfactory(self,node):
         u = url.URL(self.urlbase)
@@ -289,6 +290,7 @@ class Navigation(object):
             if request_path == nodepath:
                 add_class(t, 'selected')
 
+
             if self.item_id == 'name':
                 t.attrs['id'] = 'nav-%s'%node.name
 
@@ -389,6 +391,8 @@ class Navigation(object):
 
         # We always start with a menu
         tag = T.ul()
+        if self.css_class is not None:
+            add_class(tag, self.css_class)
 
         # Take the rootnode and add children given the navigation group as
         # context (navgroup is primary secondary but coded as integers)
