@@ -7,7 +7,8 @@ class Node(object):
     A Navigation Node
     """
 
-    def __init__(self, dottedpath, label, id, group=None, item_id=None, children=None, namespace=None):
+    def __init__(self, dottedpath, label, id, group=None, item_id=None,
+                 children=None, namespace=None, url=None):
         self.id = id
         self.path = dottedpath
         self.group = group
@@ -19,6 +20,7 @@ class Node(object):
         else:
             self.children = []
         self.namespace = namespace
+        self.url=url
 
     def name():
         def get(self):
@@ -96,7 +98,7 @@ def create_sitemap(node_defs):
         sitemap.add_from_node_def( *node_def[:-1], **node_def[-1])
     return sitemap
 
-        
+
 
 
 class Navigation(object):
@@ -108,7 +110,7 @@ class Navigation(object):
         Parameters
         ----------
 
-        type    
+        type
             If set, filters the navigation items in sitemap to be of the given
             type only. Otherwise, all navigation items (not necessarily the
             same as all sitemap items) are rendered.
@@ -137,7 +139,7 @@ class Navigation(object):
 
         item_class
             a list of what class to add. valid values are 'number' and 'firstlast'.
- 
+
         item_id
             the node attr to use as the id. Defaults to 'name' (the only value at the moment)
 
@@ -150,7 +152,7 @@ class Navigation(object):
         either absolute to the root URL or relative from a symbolic location or
         a named navigation group.
 
-            <int>   
+            <int>
                 Absolute depth from the root of the site.
 
             here+<int>
@@ -186,6 +188,8 @@ class Navigation(object):
         self.css_class = css_class
 
     def _urlfactory(self,node):
+        if node.url is not None:
+            return url.URL(node.url)
         u = url.URL(self.urlbase)
         for segment in node.path.split('.')[1:]:
             u = u.child(segment)
@@ -200,7 +204,7 @@ class Navigation(object):
         """
         Resolve the args passed to __init__ to have real meaning in the context
         of the navigation and current location in the URL.
-        
+
         We also perform some type checking at the same time to ensure later
         comparisons work correctly.
         """
@@ -245,7 +249,7 @@ class Navigation(object):
             relative_depth = len(self.current_path_segments_for_(sitemap, request, navigation_group)) - 1
 
         return relative_depth + relative_offset
-        
+
     def current_path_segments(self, request):
         path = ['root'] + request.url.path_segments
         return path
@@ -286,7 +290,7 @@ class Navigation(object):
 
             t = T.li()[T.a(href=self.urlfactory(node))[label]]
             tag[t]
-            
+
             if request_path == nodepath:
                 add_class(t, 'selected')
 
@@ -347,7 +351,7 @@ class Navigation(object):
                 return tag
 
 
-            # for each child of the node, (i.e. for each top level menu item) 
+            # for each child of the node, (i.e. for each top level menu item)
             for child in node.children:
                 # as long as a group is defined, otherwise continue
                 if self.navigation_type is not None and child.group != self.navigation_type:
@@ -359,14 +363,14 @@ class Navigation(object):
         def _menu_built(tag):
 
 
-            
+
             if 'firstlast' in self.item_class:
                 try:
                     add_class(tag.children[0], 'first-child')
                     add_class(tag.children[-1], 'last-child')
                 except IndexError:
                     pass
-            
+
             if 'number' in self.item_class:
                 for n,child in enumerate(tag.children):
                     add_class(tag.children[n], 'item-%s'%(n+1))
@@ -430,7 +434,7 @@ def items_to_display(sitemap, current_path, navigation_group):
     visit_children(sitemap)
 
     return items
-    
+
 
 
 def _boolean(value):
